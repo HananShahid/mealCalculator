@@ -19,8 +19,7 @@ class Ingredient {
   factory Ingredient.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Ingredient(
-      name:
-          data['Ingredient'] ?? '', // Adjust according to Firestore field name
+      name: data['name'] ?? '', // Adjusted field name to 'name' for consistency
       kcalPerGram: (data['kcalPerGram'] as num).toDouble(),
       carbsPerGram: (data['carbsPerGram'] as num).toDouble(),
       proteinPerGram: (data['proteinPerGram'] as num).toDouble(),
@@ -31,7 +30,7 @@ class Ingredient {
   // Convert Ingredient instance to Firestore-friendly map for upload
   Map<String, dynamic> toFirestore() {
     return {
-      'Ingredient': name,
+      'name': name, // Updated field name to 'name'
       'kcalPerGram': kcalPerGram,
       'carbsPerGram': carbsPerGram,
       'proteinPerGram': proteinPerGram,

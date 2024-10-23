@@ -22,12 +22,9 @@ class _MealPlannerState extends State<MealPlanner> {
   double totalFat = 0;
   double targetCalories = 0; // User input for target calories
 
-  List<Ingredient> firestoreIngredients = []; // Ingredients from Firestore
-
   @override
   void initState() {
     super.initState();
-    fetchIngredientsFromFirestore();
     addNewIngredientField(); // Add the first ingredient field
   }
 
@@ -39,16 +36,6 @@ class _MealPlannerState extends State<MealPlanner> {
       ingredientWeights.add(0);
       filteredIngredients.add([]);
       searchControllers.add(TextEditingController());
-    });
-  }
-
-  // Function to fetch ingredients from Firestore
-  Future<void> fetchIngredientsFromFirestore() async {
-    QuerySnapshot snapshot =
-        await FirebaseFirestore.instance.collection('ingredients').get();
-    setState(() {
-      firestoreIngredients =
-          snapshot.docs.map((doc) => Ingredient.fromFirestore(doc)).toList();
     });
   }
 
@@ -88,17 +75,24 @@ class _MealPlannerState extends State<MealPlanner> {
     }
   }
 
-  // Function to filter ingredients based on search input
-  void filterIngredients(String query, int index) {
-    setState(() {
-      if (query.isEmpty) {
+  // Real-time query to fetch ingredients from Firestore based on search input
+  Future<void> filterIngredientsFromFirestore(String query, int index) async {
+    if (query.isEmpty) {
+      setState(() {
         filteredIngredients[index] = [];
-      } else {
-        filteredIngredients[index] = firestoreIngredients
-            .where((ingredient) =>
-                ingredient.name.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
+      });
+      return;
+    }
+
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('ingredients')
+        .where('name', isGreaterThanOrEqualTo: query)
+        .where('name', isLessThanOrEqualTo: query + '\uf8ff')
+        .get();
+
+    setState(() {
+      filteredIngredients[index] =
+          snapshot.docs.map((doc) => Ingredient.fromFirestore(doc)).toList();
     });
   }
 
@@ -138,14 +132,14 @@ class _MealPlannerState extends State<MealPlanner> {
                     children: [
                       Row(
                         children: [
-                          // Search field to search ingredients
+                          // Search field to search ingredients from Firestore
                           Expanded(
                             child: TextField(
                               controller: searchControllers[index],
                               decoration: const InputDecoration(
                                   labelText: "Search Ingredient"),
                               onChanged: (value) {
-                                filterIngredients(value, index);
+                                filterIngredientsFromFirestore(value, index);
                               },
                             ),
                           ),

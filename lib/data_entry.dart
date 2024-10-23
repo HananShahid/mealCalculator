@@ -16,22 +16,33 @@ class _DataEntryPageState extends State<DataEntryPage> {
   final TextEditingController fatController = TextEditingController();
 
   Future<void> addIngredientToFirestore() async {
-    await FirebaseFirestore.instance.collection('ingredients').add({
-      'Ingredient': nameController.text.trim(),
-      'kcalPerGram': double.parse(kcalController.text.trim()),
-      'carbsPerGram': double.parse(carbsController.text.trim()),
-      'proteinPerGram': double.parse(proteinController.text.trim()),
-      'fatPerGram': double.parse(fatController.text.trim()),
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ingredient added successfully!')),
-    );
-    // Clear inputs after submission
-    nameController.clear();
-    kcalController.clear();
-    carbsController.clear();
-    proteinController.clear();
-    fatController.clear();
+    try {
+      // Add the ingredient data to Firestore collection 'ingredients'
+      await FirebaseFirestore.instance.collection('ingredients').add({
+        'name': nameController.text.trim(), // Updated field name to 'name'
+        'kcalPerGram': double.parse(kcalController.text.trim()),
+        'carbsPerGram': double.parse(carbsController.text.trim()),
+        'proteinPerGram': double.parse(proteinController.text.trim()),
+        'fatPerGram': double.parse(fatController.text.trim()),
+      });
+
+      // Display success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingredient added successfully!')),
+      );
+
+      // Clear input fields after submission
+      nameController.clear();
+      kcalController.clear();
+      carbsController.clear();
+      proteinController.clear();
+      fatController.clear();
+    } catch (e) {
+      // Handle any errors that occur during the Firestore add operation
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add ingredient: $e')),
+      );
+    }
   }
 
   @override

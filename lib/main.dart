@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Import Firebase core package
 import 'meal_planner.dart'; // Import the MealPlanner widget
+import 'data_entry.dart'; // Import the DataEntry widget
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MealPlanner(), // Start directly with the MealPlanner screen
+      home: const MealPlanner(), // Start with the MealPlanner screen
+      routes: {
+        '/meal-planner': (context) =>
+            const MealPlanner(), // Route for MealPlanner
+        '/data-entry': (context) =>
+            const DataEntryPage(), // Route for DataEntryPage
+      },
     );
   }
 }
