@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore package
-import 'data_base.dart'; // Import the ingredient data
 import 'data_entry.dart'; // Import the new Data Entry Page
+import 'data_base.dart';
 
 class MealPlanner extends StatefulWidget {
   const MealPlanner({super.key});
@@ -11,11 +11,14 @@ class MealPlanner extends StatefulWidget {
 }
 
 class _MealPlannerState extends State<MealPlanner> {
-  List<TextEditingController> searchControllers = [];
-  List<TextEditingController> weightControllers = [];
-  List<Ingredient?> selectedIngredients = [];
-  List<Ingredient> ingredientSuggestions = []; // Global list for suggestions
-
+  List<TextEditingController> searchControllers =
+      []; // List of search controllers for each ingredient
+  List<TextEditingController> weightControllers =
+      []; // List of weight controllers for each ingredient
+  List<Ingredient?> selectedIngredients =
+      []; // List to store the selected ingredients
+  List<List<Ingredient>> ingredientSuggestionsList =
+      []; // List of suggestion lists for each search field
   double totalCalories = 0;
   double totalCarbs = 0;
   double totalProtein = 0;
@@ -25,7 +28,17 @@ class _MealPlannerState extends State<MealPlanner> {
   @override
   void initState() {
     super.initState();
-    addIngredientField(); // Add the first ingredient field on load
+    addIngredientField(); // Add the first ingredient field when the app starts
+  }
+
+  // Function to add a new ingredient field
+  void addIngredientField() {
+    setState(() {
+      searchControllers.add(TextEditingController());
+      weightControllers.add(TextEditingController());
+      selectedIngredients.add(null);
+      ingredientSuggestionsList.add([]);
+    });
   }
 
   // Function to calculate total nutritional values based on selected ingredients and their weights
@@ -64,16 +77,18 @@ class _MealPlannerState extends State<MealPlanner> {
             weightControllers[i].text = weight.toStringAsFixed(2);
           }
         }
-        calculateTotals(); // Recalculate totals with new ingredient weights
+        calculateTotals(); // Recalculate totals with the new ingredient weights
       });
     }
   }
 
-  // Real-time query to fetch ingredient suggestions from Firestore based on search input
-  Future<void> fetchIngredientSuggestionsFromFirestore(String query) async {
+  // Real-time query to fetch ingredients directly from Firestore based on search input
+  Future<void> fetchIngredientSuggestionsFromFirestore(
+      String query, int index) async {
     if (query.isEmpty) {
       setState(() {
-        ingredientSuggestions = []; // Clear suggestions when input is empty
+        ingredientSuggestionsList[index] =
+            []; // Clear suggestions when input is empty
       });
       return;
     }
@@ -87,28 +102,20 @@ class _MealPlannerState extends State<MealPlanner> {
         .get();
 
     setState(() {
-      ingredientSuggestions = snapshot.docs
+      ingredientSuggestionsList[index] = snapshot.docs
           .map((doc) => Ingredient.fromFirestore(doc))
-          .toList(); // Store the list of suggestions globally
+          .toList(); // Store the list of suggestions for the specific field
     });
   }
 
-  // Function to add a new ingredient field
-  void addIngredientField() {
+  // Function to select an ingredient from the suggestions
+  void selectIngredient(Ingredient ingredient, int index) {
     setState(() {
-      searchControllers.add(TextEditingController());
-      weightControllers.add(TextEditingController());
-      selectedIngredients.add(null);
-    });
-  }
-
-  // Function to select an ingredient from the suggestions and populate the search field
-  void selectIngredient(Ingredient ingredient, int fieldIndex) {
-    setState(() {
-      selectedIngredients[fieldIndex] = ingredient;
-      searchControllers[fieldIndex].text =
+      selectedIngredients[index] = ingredient;
+      searchControllers[index].text =
           ingredient.name; // Set selected ingredient in the search field
-      ingredientSuggestions = []; // Clear suggestions after selecting
+      ingredientSuggestionsList[index] =
+          []; // Clear suggestions after selecting
     });
   }
 
@@ -137,7 +144,7 @@ class _MealPlannerState extends State<MealPlanner> {
             Expanded(
               child: ListView.builder(
                 itemCount: searchControllers.length,
-                itemBuilder: (context, fieldIndex) {
+                itemBuilder: (context, index) {
                   return Column(
                     children: [
                       Row(
@@ -145,12 +152,12 @@ class _MealPlannerState extends State<MealPlanner> {
                           // Search field to search ingredients from Firestore
                           Expanded(
                             child: TextField(
-                              controller: searchControllers[fieldIndex],
+                              controller: searchControllers[index],
                               decoration: const InputDecoration(
                                   labelText: "Search Ingredient"),
                               onChanged: (value) {
                                 fetchIngredientSuggestionsFromFirestore(
-                                    value); // Fetch suggestions globally
+                                    value, index); // Fetch suggestions
                               },
                             ),
                           ),
@@ -158,7 +165,7 @@ class _MealPlannerState extends State<MealPlanner> {
                           // Weight input field
                           Expanded(
                             child: TextField(
-                              controller: weightControllers[fieldIndex],
+                              controller: weightControllers[index],
                               decoration: const InputDecoration(
                                   labelText: "Weight (g)"),
                               keyboardType: TextInputType.number,
@@ -167,36 +174,39 @@ class _MealPlannerState extends State<MealPlanner> {
                               },
                             ),
                           ),
-                          // Plus button to add a new ingredient field
-                          IconButton(
-                            icon: const Icon(Icons.add),
-                            onPressed: () {
-                              addIngredientField(); // Add a new ingredient field
-                            },
-                          ),
                         ],
                       ),
                       // Display suggestions below the search field
-                      if (ingredientSuggestions.isNotEmpty)
+                      if (ingredientSuggestionsList[index].isNotEmpty)
                         ListView.builder(
                           shrinkWrap: true,
-                          itemCount: ingredientSuggestions.length,
+                          itemCount: ingredientSuggestionsList[index].length,
                           itemBuilder: (context, suggestionIndex) {
                             return ListTile(
-                              title: Text(
-                                  ingredientSuggestions[suggestionIndex].name),
+                              title: Text(ingredientSuggestionsList[index]
+                                      [suggestionIndex]
+                                  .name),
                               onTap: () {
                                 selectIngredient(
-                                    ingredientSuggestions[suggestionIndex],
-                                    fieldIndex); // Select ingredient
+                                    ingredientSuggestionsList[index]
+                                        [suggestionIndex],
+                                    index); // Select ingredient
                               },
                             );
                           },
                         ),
+                      const SizedBox(height: 10),
                     ],
                   );
                 },
               ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                addIngredientField(); // Add a new ingredient field
+              },
+              child: const Text('Add Ingredient'),
             ),
             const SizedBox(height: 20),
             // Input for target calories
