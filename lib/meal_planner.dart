@@ -153,8 +153,8 @@ class _MealPlannerState extends State<MealPlanner> {
                               decoration: const InputDecoration(
                                   labelText: "Search Ingredient"),
                               onChanged: (value) {
-                                fetchIngredientSuggestionsFromFirestore(
-                                    value, index); // Fetch suggestions
+                                fetchIngredientSuggestionsFromFirestore(value,
+                                    index); // Fetch suggestions based on query
                               },
                             ),
                           ),
@@ -175,7 +175,7 @@ class _MealPlannerState extends State<MealPlanner> {
                           IconButton(
                             icon: const Icon(Icons.add),
                             onPressed: () {
-                              addIngredientField();
+                              addIngredientField(); // Add a new ingredient field
                             },
                           ),
                         ],
@@ -194,7 +194,7 @@ class _MealPlannerState extends State<MealPlanner> {
                                 selectIngredient(
                                     ingredientSuggestionsList[index]
                                         [suggestionIndex],
-                                    index);
+                                    index); // Select ingredient
                               },
                             );
                           },
