@@ -14,7 +14,7 @@ class _MealPlannerState extends State<MealPlanner> {
   List<TextEditingController> searchControllers = [];
   List<TextEditingController> weightControllers = [];
   List<Ingredient?> selectedIngredients = [];
-  List<List<Ingredient>> ingredientSuggestionsList = [];
+  List<Ingredient> ingredientSuggestions = []; // Global list for suggestions
 
   double totalCalories = 0;
   double totalCarbs = 0;
@@ -70,12 +70,10 @@ class _MealPlannerState extends State<MealPlanner> {
   }
 
   // Real-time query to fetch ingredient suggestions from Firestore based on search input
-  Future<void> fetchIngredientSuggestionsFromFirestore(
-      String query, int index) async {
+  Future<void> fetchIngredientSuggestionsFromFirestore(String query) async {
     if (query.isEmpty) {
       setState(() {
-        ingredientSuggestionsList[index] =
-            []; // Clear suggestions when input is empty
+        ingredientSuggestions = []; // Clear suggestions when input is empty
       });
       return;
     }
@@ -89,9 +87,9 @@ class _MealPlannerState extends State<MealPlanner> {
         .get();
 
     setState(() {
-      ingredientSuggestionsList[index] = snapshot.docs
+      ingredientSuggestions = snapshot.docs
           .map((doc) => Ingredient.fromFirestore(doc))
-          .toList(); // Store the list of suggestions
+          .toList(); // Store the list of suggestions globally
     });
   }
 
@@ -101,18 +99,16 @@ class _MealPlannerState extends State<MealPlanner> {
       searchControllers.add(TextEditingController());
       weightControllers.add(TextEditingController());
       selectedIngredients.add(null);
-      ingredientSuggestionsList.add([]);
     });
   }
 
   // Function to select an ingredient from the suggestions and populate the search field
-  void selectIngredient(Ingredient ingredient, int index) {
+  void selectIngredient(Ingredient ingredient, int fieldIndex) {
     setState(() {
-      selectedIngredients[index] = ingredient;
-      searchControllers[index].text =
+      selectedIngredients[fieldIndex] = ingredient;
+      searchControllers[fieldIndex].text =
           ingredient.name; // Set selected ingredient in the search field
-      ingredientSuggestionsList[index] =
-          []; // Clear suggestions after selecting
+      ingredientSuggestions = []; // Clear suggestions after selecting
     });
   }
 
@@ -141,7 +137,7 @@ class _MealPlannerState extends State<MealPlanner> {
             Expanded(
               child: ListView.builder(
                 itemCount: searchControllers.length,
-                itemBuilder: (context, index) {
+                itemBuilder: (context, fieldIndex) {
                   return Column(
                     children: [
                       Row(
@@ -149,12 +145,12 @@ class _MealPlannerState extends State<MealPlanner> {
                           // Search field to search ingredients from Firestore
                           Expanded(
                             child: TextField(
-                              controller: searchControllers[index],
+                              controller: searchControllers[fieldIndex],
                               decoration: const InputDecoration(
                                   labelText: "Search Ingredient"),
                               onChanged: (value) {
-                                fetchIngredientSuggestionsFromFirestore(value,
-                                    index); // Fetch suggestions based on query
+                                fetchIngredientSuggestionsFromFirestore(
+                                    value); // Fetch suggestions globally
                               },
                             ),
                           ),
@@ -162,7 +158,7 @@ class _MealPlannerState extends State<MealPlanner> {
                           // Weight input field
                           Expanded(
                             child: TextField(
-                              controller: weightControllers[index],
+                              controller: weightControllers[fieldIndex],
                               decoration: const InputDecoration(
                                   labelText: "Weight (g)"),
                               keyboardType: TextInputType.number,
@@ -181,20 +177,18 @@ class _MealPlannerState extends State<MealPlanner> {
                         ],
                       ),
                       // Display suggestions below the search field
-                      if (ingredientSuggestionsList[index].isNotEmpty)
+                      if (ingredientSuggestions.isNotEmpty)
                         ListView.builder(
                           shrinkWrap: true,
-                          itemCount: ingredientSuggestionsList[index].length,
+                          itemCount: ingredientSuggestions.length,
                           itemBuilder: (context, suggestionIndex) {
                             return ListTile(
-                              title: Text(ingredientSuggestionsList[index]
-                                      [suggestionIndex]
-                                  .name),
+                              title: Text(
+                                  ingredientSuggestions[suggestionIndex].name),
                               onTap: () {
                                 selectIngredient(
-                                    ingredientSuggestionsList[index]
-                                        [suggestionIndex],
-                                    index); // Select ingredient
+                                    ingredientSuggestions[suggestionIndex],
+                                    fieldIndex); // Select ingredient
                               },
                             );
                           },
