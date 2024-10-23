@@ -11,36 +11,40 @@ class MealPlanner extends StatefulWidget {
 }
 
 class _MealPlannerState extends State<MealPlanner> {
-  final TextEditingController searchController =
-      TextEditingController(); // For the search field
-  final TextEditingController weightController = TextEditingController();
-  Ingredient? selectedIngredient; // Store the selected ingredient
-  double ingredientWeight = 0;
+  List<TextEditingController> searchControllers = [];
+  List<TextEditingController> weightControllers = [];
+  List<Ingredient?> selectedIngredients = [];
+  List<List<Ingredient>> ingredientSuggestionsList = [];
+
   double totalCalories = 0;
   double totalCarbs = 0;
   double totalProtein = 0;
   double totalFat = 0;
   double targetCalories = 0; // User input for target calories
-  List<Ingredient> ingredientSuggestions =
-      []; // Store suggestions from Firestore
 
   @override
   void initState() {
     super.initState();
+    addIngredientField(); // Add the first ingredient field on load
   }
 
-  // Function to calculate total nutritional values based on selected ingredient and its weight
+  // Function to calculate total nutritional values based on selected ingredients and their weights
   void calculateTotals() {
     totalCalories = 0;
     totalCarbs = 0;
     totalProtein = 0;
     totalFat = 0;
 
-    if (selectedIngredient != null && ingredientWeight > 0) {
-      totalCalories += selectedIngredient!.kcalPerGram * ingredientWeight;
-      totalCarbs += selectedIngredient!.carbsPerGram * ingredientWeight;
-      totalProtein += selectedIngredient!.proteinPerGram * ingredientWeight;
-      totalFat += selectedIngredient!.fatPerGram * ingredientWeight;
+    for (int i = 0; i < selectedIngredients.length; i++) {
+      if (selectedIngredients[i] != null &&
+          weightControllers[i].text.isNotEmpty) {
+        double weight = double.tryParse(weightControllers[i].text) ?? 0;
+        Ingredient ingredient = selectedIngredients[i]!;
+        totalCalories += ingredient.kcalPerGram * weight;
+        totalCarbs += ingredient.carbsPerGram * weight;
+        totalProtein += ingredient.proteinPerGram * weight;
+        totalFat += ingredient.fatPerGram * weight;
+      }
     }
 
     setState(() {}); // Update the UI
@@ -49,24 +53,29 @@ class _MealPlannerState extends State<MealPlanner> {
   // Function to tailor the recipe based on target calories
   void tailorRecipe() {
     if (totalCalories > 0 && targetCalories > 0) {
-      double adjustmentFactor =
-          targetCalories / totalCalories; // Adjust weights
+      double adjustmentFactor = targetCalories / totalCalories;
 
       setState(() {
-        if (selectedIngredient != null && ingredientWeight > 0) {
-          ingredientWeight = ingredientWeight * adjustmentFactor;
-          weightController.text = ingredientWeight.toStringAsFixed(2);
+        for (int i = 0; i < weightControllers.length; i++) {
+          if (selectedIngredients[i] != null &&
+              weightControllers[i].text.isNotEmpty) {
+            double weight = double.tryParse(weightControllers[i].text) ?? 0;
+            weight = weight * adjustmentFactor;
+            weightControllers[i].text = weight.toStringAsFixed(2);
+          }
         }
-        calculateTotals(); // Recalculate totals with the new ingredient weight
+        calculateTotals(); // Recalculate totals with new ingredient weights
       });
     }
   }
 
-  // Real-time query to fetch ingredients from Firestore based on search input
-  Future<void> fetchIngredientSuggestionsFromFirestore(String query) async {
+  // Real-time query to fetch ingredient suggestions from Firestore based on search input
+  Future<void> fetchIngredientSuggestionsFromFirestore(
+      String query, int index) async {
     if (query.isEmpty) {
       setState(() {
-        ingredientSuggestions = []; // Clear suggestions when input is empty
+        ingredientSuggestionsList[index] =
+            []; // Clear suggestions when input is empty
       });
       return;
     }
@@ -80,19 +89,30 @@ class _MealPlannerState extends State<MealPlanner> {
         .get();
 
     setState(() {
-      ingredientSuggestions = snapshot.docs
+      ingredientSuggestionsList[index] = snapshot.docs
           .map((doc) => Ingredient.fromFirestore(doc))
           .toList(); // Store the list of suggestions
     });
   }
 
-  // Function to select an ingredient from the suggestions and populate the search field
-  void selectIngredient(Ingredient ingredient) {
+  // Function to add a new ingredient field
+  void addIngredientField() {
     setState(() {
-      selectedIngredient = ingredient;
-      searchController.text =
+      searchControllers.add(TextEditingController());
+      weightControllers.add(TextEditingController());
+      selectedIngredients.add(null);
+      ingredientSuggestionsList.add([]);
+    });
+  }
+
+  // Function to select an ingredient from the suggestions and populate the search field
+  void selectIngredient(Ingredient ingredient, int index) {
+    setState(() {
+      selectedIngredients[index] = ingredient;
+      searchControllers[index].text =
           ingredient.name; // Set selected ingredient in the search field
-      ingredientSuggestions = []; // Clear suggestions after selecting
+      ingredientSuggestionsList[index] =
+          []; // Clear suggestions after selecting
     });
   }
 
@@ -118,54 +138,72 @@ class _MealPlannerState extends State<MealPlanner> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Row(
-              children: [
-                // Search field to search ingredients from Firestore
-                Expanded(
-                  child: TextField(
-                    controller: searchController, // Link the controller
-                    decoration:
-                        const InputDecoration(labelText: "Search Ingredient"),
-                    onChanged: (value) {
-                      fetchIngredientSuggestionsFromFirestore(
-                          value); // Fetch suggestions from Firestore
-                    },
-                  ),
-                ),
-                const SizedBox(width: 20),
-                // Weight input field
-                Expanded(
-                  child: TextField(
-                    controller: weightController,
-                    decoration: const InputDecoration(labelText: "Weight (g)"),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      setState(() {
-                        ingredientWeight = double.tryParse(value) ?? 0;
-                        calculateTotals(); // Recalculate after weight change
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-            // Display suggestions below the search field
-            if (ingredientSuggestions.isNotEmpty)
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: ingredientSuggestions.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(ingredientSuggestions[index].name),
-                      onTap: () {
-                        selectIngredient(
-                            ingredientSuggestions[index]); // Select ingredient
-                      },
-                    );
-                  },
-                ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: searchControllers.length,
+                itemBuilder: (context, index) {
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          // Search field to search ingredients from Firestore
+                          Expanded(
+                            child: TextField(
+                              controller: searchControllers[index],
+                              decoration: const InputDecoration(
+                                  labelText: "Search Ingredient"),
+                              onChanged: (value) {
+                                fetchIngredientSuggestionsFromFirestore(
+                                    value, index); // Fetch suggestions
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          // Weight input field
+                          Expanded(
+                            child: TextField(
+                              controller: weightControllers[index],
+                              decoration: const InputDecoration(
+                                  labelText: "Weight (g)"),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                calculateTotals(); // Recalculate after weight change
+                              },
+                            ),
+                          ),
+                          // Plus button to add a new ingredient field
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () {
+                              addIngredientField();
+                            },
+                          ),
+                        ],
+                      ),
+                      // Display suggestions below the search field
+                      if (ingredientSuggestionsList[index].isNotEmpty)
+                        ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: ingredientSuggestionsList[index].length,
+                          itemBuilder: (context, suggestionIndex) {
+                            return ListTile(
+                              title: Text(ingredientSuggestionsList[index]
+                                      [suggestionIndex]
+                                  .name),
+                              onTap: () {
+                                selectIngredient(
+                                    ingredientSuggestionsList[index]
+                                        [suggestionIndex],
+                                    index);
+                              },
+                            );
+                          },
+                        ),
+                    ],
+                  );
+                },
               ),
+            ),
             const SizedBox(height: 20),
             // Input for target calories
             TextField(
