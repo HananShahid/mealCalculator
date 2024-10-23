@@ -15,15 +15,29 @@ class _DataEntryPageState extends State<DataEntryPage> {
   final TextEditingController proteinController = TextEditingController();
   final TextEditingController fatController = TextEditingController();
 
+  // Function to generate search keywords (lowercase substrings) for case-insensitive search
+  List<String> generateSearchKeywords(String name) {
+    List<String> keywords = [];
+    String lowercaseName = name.toLowerCase();
+    for (int i = 1; i <= lowercaseName.length; i++) {
+      keywords.add(lowercaseName.substring(0, i));
+    }
+    return keywords;
+  }
+
   Future<void> addIngredientToFirestore() async {
     try {
+      String ingredientName = nameController.text.trim();
+
       // Add the ingredient data to Firestore collection 'ingredients'
       await FirebaseFirestore.instance.collection('ingredients').add({
-        'name': nameController.text.trim(), // Updated field name to 'name'
+        'name': ingredientName, // Updated field name to 'name'
         'kcalPerGram': double.parse(kcalController.text.trim()),
         'carbsPerGram': double.parse(carbsController.text.trim()),
         'proteinPerGram': double.parse(proteinController.text.trim()),
         'fatPerGram': double.parse(fatController.text.trim()),
+        'searchKeywords': generateSearchKeywords(
+            ingredientName), // Add searchKeywords for case-insensitive search
       });
 
       // Display success message

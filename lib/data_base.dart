@@ -6,6 +6,8 @@ class Ingredient {
   final double carbsPerGram;
   final double proteinPerGram;
   final double fatPerGram;
+  final List<String>
+      searchKeywords; // Include searchKeywords for case-insensitive search
 
   Ingredient({
     required this.name,
@@ -13,6 +15,7 @@ class Ingredient {
     required this.carbsPerGram,
     required this.proteinPerGram,
     required this.fatPerGram,
+    required this.searchKeywords, // Added to the constructor
   });
 
   // Factory method to create an Ingredient from Firestore document
@@ -24,6 +27,8 @@ class Ingredient {
       carbsPerGram: (data['carbsPerGram'] as num).toDouble(),
       proteinPerGram: (data['proteinPerGram'] as num).toDouble(),
       fatPerGram: (data['fatPerGram'] as num).toDouble(),
+      searchKeywords: List<String>.from(
+          data['searchKeywords'] ?? []), // Handling searchKeywords field
     );
   }
 
@@ -35,6 +40,8 @@ class Ingredient {
       'carbsPerGram': carbsPerGram,
       'proteinPerGram': proteinPerGram,
       'fatPerGram': fatPerGram,
+      'searchKeywords':
+          searchKeywords, // Include searchKeywords in Firestore upload
     };
   }
 }
